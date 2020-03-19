@@ -73,7 +73,6 @@ export default {
       
       // create new contract
       const nonce = this.$randInt();
-      console.log(nonce.toString());
       const proofHash = this.$generateProof(
         this.$store.state.private_key,
         nonce.toString(),
