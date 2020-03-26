@@ -5,17 +5,19 @@ import Vuex from 'vuex';
 import './plugins/bootstrap-vue';
 import App from './App.vue';
 import sstore from './store';
-import AES from 'crypto-js/aes';
-import utf8 from 'crypto-js/enc-utf8';
 import { Random } from 'random-js';
 import { StoreType, TezosNodeWriter, TezosParameterFormat } from 'conseiljs';
-import { SecretStore, SecretStoreStorage } from './contract'
+import { SecretStore, SecretStoreStorage } from './contract';
+var CryptoJS = require("crypto-js");
 const argon2 = require('argon2-browser');
 const blake = require('blakejs');
 const arrayBufferToHex = require('array-buffer-to-hex');
-const tezosNode = '';
-
-// setLogLevel('debug');
+const tezosNode = 'https://carthagenet.SmartPy.io';
+// const network = 'carthagenet';
+// const conseilServer = {
+//   url: 'https://conseil-dev.cryptonomic-infra.tech:443',
+//   apiKey: 'b9labs', network
+// };
 
 Vue.config.productionTip = false
 Vue.use(Vuex)
@@ -26,27 +28,34 @@ Vue.prototype.$toKey = function (password, username) {
     pass: password,
     salt: username,
     // optional
-    time: Vue.config.devtools ? 10000 : 100, // the number of iterations
-    mem: Vue.config.devtools ? 2048 : 1024, // used memory, in KiB
+    time: Vue.config.devtools ? 100 : 10000, // the number of iterations
+    mem: 1024, // used memory, in KiB
     hashLen: 64, // desired hash length
     parallelism: 1, // desired parallelism (will be computed in parallel only for PNaCl)
     type: argon2.ArgonType.Argon2id, // or argon2.ArgonType.Argon2i
   });
 };
 
-function encryptData(dataStr, hexKey) {
-  var cipher = AES.encrypt(dataStr, hexKey).toString();
+function strToHex(str) {
+  var bytes = Buffer.from(str);
 
-  var cipherBytes = Buffer.from(cipher);
-
-  return arrayBufferToHex(cipherBytes);
-
+  return arrayBufferToHex(bytes);
 }
 
-Vue.prototype.$encryptData = encryptData;
 
-Vue.prototype.$decryptData = function (dataCipher, hexKey) {
-  const dataStr = AES.decrypt(dataCipher, hexKey).toString(utf8);
+Vue.prototype.$encryptData = function (dataStr, pKey, hex = false) {
+  var cipher = CryptoJS.AES.encrypt(dataStr, pKey).toString();
+
+  if (!hex) {
+    return cipher;
+  }
+
+  return strToHex(cipher);
+
+};
+
+Vue.prototype.$decryptData = function (dataCipher, pKey) {
+  const dataStr = CryptoJS.AES.decrypt(dataCipher, pKey).toString(CryptoJS.enc.Utf8);
   return JSON.parse(dataStr);
 };
 
@@ -59,17 +68,26 @@ Vue.prototype.$setKTAddress = function (KTAddress) {
 };
 
 Vue.prototype.$generateProof = function (private_key, nonce, hash = false) {
-  const proof = encryptData(nonce, private_key);
 
+  // if we are hashing (hash == true) then we use utf string
+  // if we are creating proof (hash == false) we return hex of proof
+
+  // the order is important
+  const iv = CryptoJS.enc.Base64.parse(private_key);
+  private_key = CryptoJS.enc.Utf8.parse(private_key);
+  const proof = CryptoJS.AES.encrypt(nonce, private_key, { iv: iv }).toString();
+
+  console.log(proof);
   if (hash) {
     return '0x' + blake.blake2bHex(proof, null, 32);
   }
 
-  return proof;
+  return strToHex(proof);
 
 }
 
 Vue.prototype.$deployContract = async function (initialNonce, initialHashedProof) {
+
   const keystore = {
     publicKey: 'edpkuH4EMzK1jZSU8836SqZKc9RxY2aCKwK2KzPhqobb6zVk5TkTvV',
     privateKey: 'edskRpMHNHjKqbJ1jZZd6oLpLC3jFujmY2nqoc7cxkBDnvhzfbc9zVc4ZZS1czBtXRPsu2A2LeU6DNwvzadQ5xDUVqun1ic4t6',
@@ -78,12 +96,19 @@ Vue.prototype.$deployContract = async function (initialNonce, initialHashedProof
     storeType: StoreType.Fundraiser
   };
 
-  const contract = SecretStore;
+  const contract = JSON.stringify(SecretStore);
 
-  const storage = SecretStoreStorage(initialNonce, initialHashedProof);
+  const storage = JSON.stringify(SecretStoreStorage(initialNonce, initialHashedProof));
 
-  const result = await TezosNodeWriter.sendContractOriginationOperation(tezosNode, keystore, 0, undefined, 100000, '', 1000, 100000, contract, storage, TezosParameterFormat.Micheline);
-  console.log(`Injected operation group id ${result.operationGroupID}`);
+  const nodeResult = await TezosNodeWriter.sendContractOriginationOperation(tezosNode, keystore, 0, undefined, 100000, '', 1000, 100000, contract, storage, TezosParameterFormat.Micheline);
+
+  return nodeResult;
+  // const reg1 = '/"/g';
+  // const reg2 = /\n/;
+  // const groupid = nodeResult['operationGroupID'].replace(reg1, '').replace(reg2, ''); // clean up RPC output
+  // console.log(`Injected operation group id ${groupid}`);
+  // const conseilResult = await TezosConseilClient.awaitOperationConfirmation(conseilServer, network, groupid, 5);
+  // console.log(`Originated contract at ${conseilResult[0].originated_contracts}`);
 }
 
 Vue.prototype.$invokeContract = function () {

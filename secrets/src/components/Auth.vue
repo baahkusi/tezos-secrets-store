@@ -61,12 +61,13 @@ export default {
             }
           );
         })
-        .catch(() => {
+        .catch((e) => {
           this.$bvToast.toast("something went wrong :(.", {
             title: "Generating secret key from password  ...",
             variant: "danger",
             solid: true
           });
+          console.log(e);
         });
     }
   }

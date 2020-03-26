@@ -37,7 +37,7 @@ export default {
     };
   },
   methods: {
-    onSubmit(evt) {
+    async onSubmit(evt) {
       evt.preventDefault();
       if (!this.$store.state.authed) {
         this.$bvToast.toast(
@@ -56,7 +56,7 @@ export default {
 
       const dataCipher = this.$encryptData(
         JSON.stringify(this.form),
-        this.$store.state.private_key
+        this.$store.state.private_key,
       );
 
       console.log(dataCipher);      
@@ -72,13 +72,18 @@ export default {
 
       
       // create new contract
-      const nonce = this.$randInt();
-      const proofHash = this.$generateProof(
+      const initialNonce = this.$randInt();
+      const hash = true;
+      const initialHashedProof = this.$generateProof(
         this.$store.state.private_key,
-        nonce.toString(),
-        true
+        initialNonce.toString(),
+        hash
       );
-      console.log(proofHash);
+      
+      const contract = await this.$deployContract(initialNonce.toString(), initialHashedProof);
+
+      console.log(contract);
+
     }
   }
 };
