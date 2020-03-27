@@ -6,18 +6,19 @@ import './plugins/bootstrap-vue';
 import App from './App.vue';
 import sstore from './store';
 import { Random } from 'random-js';
-import { StoreType, TezosNodeWriter, TezosParameterFormat } from 'conseiljs';
-import { SecretStore, SecretStoreStorage } from './contract';
+import { StoreType, TezosNodeWriter, TezosParameterFormat, TezosConseilClient } from 'conseiljs';
+import { SecretStore, SecretStoreStorage, SecretStoreMichelson, SecretStoreStorageMichelson, credentials } from './contract';
 var CryptoJS = require("crypto-js");
 const argon2 = require('argon2-browser');
 const blake = require('blakejs');
 const arrayBufferToHex = require('array-buffer-to-hex');
-const tezosNode = 'https://carthagenet.SmartPy.io';
-// const network = 'carthagenet';
-// const conseilServer = {
-//   url: 'https://conseil-dev.cryptonomic-infra.tech:443',
-//   apiKey: 'b9labs', network
-// };
+// const network = 'babylonnet';
+const network = 'carthagenet';
+const tezosNode = `https://${network}.SmartPy.io`;
+const conseilServer = {
+  url: 'https://conseil-dev.cryptonomic-infra.tech:443',
+  apiKey: 'b9labs', network
+};
 
 Vue.config.productionTip = false
 Vue.use(Vuex)
@@ -86,29 +87,42 @@ Vue.prototype.$generateProof = function (private_key, nonce, hash = false) {
 
 }
 
-Vue.prototype.$deployContract = async function (initialNonce, initialHashedProof) {
+Vue.prototype.$deployContract = async function (initialNonce, initialHashedProof, michelson=false) {
 
   const keystore = {
-    publicKey: 'edpkuH4EMzK1jZSU8836SqZKc9RxY2aCKwK2KzPhqobb6zVk5TkTvV',
-    privateKey: 'edskRpMHNHjKqbJ1jZZd6oLpLC3jFujmY2nqoc7cxkBDnvhzfbc9zVc4ZZS1czBtXRPsu2A2LeU6DNwvzadQ5xDUVqun1ic4t6',
-    publicKeyHash: 'tz1QCRznmbFuix8PkXwgRZ626giv4ENRshWK',
+    publicKey: credentials[network].publicKey,
+    privateKey: credentials[network].privateKey,
+    publicKeyHash: credentials[network].publicKeyHash,
     seed: '',
     storeType: StoreType.Fundraiser
   };
 
+  var nodeResult;
+
+  if (michelson) {
+  const contract = SecretStoreMichelson;
+
+  const storage = SecretStoreStorageMichelson(initialNonce, initialHashedProof);
+
+  nodeResult = await TezosNodeWriter.sendContractOriginationOperation(tezosNode, keystore, 0, undefined,
+                                                                             100000, '', 1000, 100000, contract, 
+                                                                             storage, TezosParameterFormat.Michelson);
+  } else {
   const contract = JSON.stringify(SecretStore);
 
   const storage = JSON.stringify(SecretStoreStorage(initialNonce, initialHashedProof));
 
-  const nodeResult = await TezosNodeWriter.sendContractOriginationOperation(tezosNode, keystore, 0, undefined, 100000, '', 1000, 100000, contract, storage, TezosParameterFormat.Micheline);
+  nodeResult = await TezosNodeWriter.sendContractOriginationOperation(tezosNode, keystore, 0, undefined,
+                                                                             100000, '', 1000, 100000, contract, 
+                                                                             storage, TezosParameterFormat.Micheline);
+  }
 
-  return nodeResult;
-  // const reg1 = '/"/g';
-  // const reg2 = /\n/;
-  // const groupid = nodeResult['operationGroupID'].replace(reg1, '').replace(reg2, ''); // clean up RPC output
-  // console.log(`Injected operation group id ${groupid}`);
-  // const conseilResult = await TezosConseilClient.awaitOperationConfirmation(conseilServer, network, groupid, 5);
-  // console.log(`Originated contract at ${conseilResult[0].originated_contracts}`);
+  const reg1 = /"/g;
+  const reg2 = /\n/;
+  const groupid = nodeResult['operationGroupID'].replace(reg1, '').replace(reg2, ''); // clean up RPC output
+  console.log(`Injected operation group id ${groupid}`);
+  const conseilResult = await TezosConseilClient.awaitOperationConfirmation(conseilServer, network, groupid, 5);
+  console.log(`Originated contract at ${conseilResult[0].originated_contracts}`);
 }
 
 Vue.prototype.$invokeContract = function () {

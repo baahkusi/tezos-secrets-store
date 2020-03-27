@@ -80,7 +80,7 @@ export default {
         hash
       );
       
-      const contract = await this.$deployContract(initialNonce.toString(), initialHashedProof);
+      const contract = await this.$deployContract(initialNonce, initialHashedProof, true);
 
       console.log(contract);
 
