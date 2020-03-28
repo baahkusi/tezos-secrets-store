@@ -6,7 +6,7 @@ import './plugins/bootstrap-vue';
 import App from './App.vue';
 import sstore from './store';
 import { Random } from 'random-js';
-import { StoreType, TezosNodeWriter, TezosParameterFormat, TezosConseilClient } from 'conseiljs';
+import { StoreType, TezosNodeWriter, TezosParameterFormat, TezosConseilClient, OperationKindType } from 'conseiljs';
 import { SecretStore, SecretStoreStorage, SecretStoreMichelson, SecretStoreStorageMichelson, credentials } from './contract';
 var CryptoJS = require("crypto-js");
 const argon2 = require('argon2-browser');
@@ -17,7 +17,8 @@ const network = 'carthagenet';
 const tezosNode = `https://${network}.SmartPy.io`;
 const conseilServer = {
   url: 'https://conseil-dev.cryptonomic-infra.tech:443',
-  apiKey: 'b9labs', network
+  apiKey: 'b9labs', 
+  network: network
 };
 
 Vue.config.productionTip = false
@@ -97,6 +98,8 @@ Vue.prototype.$deployContract = async function (initialNonce, initialHashedProof
     storeType: StoreType.Fundraiser
   };
 
+  const fee = Number((await TezosConseilClient.getFeeStatistics(conseilServer, network, OperationKindType.Origination))[0]['high']);
+
   var nodeResult;
 
   if (michelson) {
@@ -105,7 +108,7 @@ Vue.prototype.$deployContract = async function (initialNonce, initialHashedProof
   const storage = SecretStoreStorageMichelson(initialNonce, initialHashedProof);
 
   nodeResult = await TezosNodeWriter.sendContractOriginationOperation(tezosNode, keystore, 0, undefined,
-                                                                             100000, '', 1000, 100000, contract, 
+                                                                             fee, '', 1000, 100000, contract, 
                                                                              storage, TezosParameterFormat.Michelson);
   } else {
   const contract = JSON.stringify(SecretStore);
@@ -113,7 +116,7 @@ Vue.prototype.$deployContract = async function (initialNonce, initialHashedProof
   const storage = JSON.stringify(SecretStoreStorage(initialNonce, initialHashedProof));
 
   nodeResult = await TezosNodeWriter.sendContractOriginationOperation(tezosNode, keystore, 0, undefined,
-                                                                             100000, '', 1000, 100000, contract, 
+                                                                             fee, '', 1000, 100000, contract, 
                                                                              storage, TezosParameterFormat.Micheline);
   }
 
