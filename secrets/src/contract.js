@@ -154,118 +154,112 @@ export const SecretStoreMichelson = `parameter (pair (pair (string %encryptedDat
 storage   (pair (pair (map %SecretStore bytes string) (bytes %hashedProof)) (int %nonce));
 code
   {
-    DUP;        # pair(params, storage).pair(params, storage)
-    CDR;        # storage.pair(params, storage)
-    SWAP;       # pair(params, storage).storage
-    CAR;        # params.storage
-    # Entry point: add_secret # params.storage
-    # sp.verify(sp.blake2b(params.proof) == self.data.hashedProof) # params.storage
-    SWAP;       # storage.params
-    DUP;        # storage.storage.params
-    DUG 2;      # storage.params.storage
-    CADR;       # bytes.params.storage
-    SWAP;       # params.bytes.storage
-    DUP;        # params.params.bytes.storage
-    DUG 2;      # params.bytes.params.storage
-    CDR;        # bytes.bytes.params.storage
-    BLAKE2B;    # bytes.bytes.params.storage
-    COMPARE;    # int.params.storage
-    EQ;         # bool.params.storage
+    DUP;
+    CDR;
+    SWAP;
+    CAR;
+    SWAP;
+    DUP;
+    DUG 2;
+    CADR;
+    SWAP;
+    DUP;
+    DUG 2;
+    CDR;
+    BLAKE2B;
+    COMPARE;
+    EQ;
     IF
       {}
       {
-        PUSH string "WrongCondition: sp.blake2b(params.proof) == self.data.hashedProof"; # string.params.storage
-        FAILWITH;   # FAILED
-      }; # params.storage
-    # sp.verify(~ (self.data.SecretStore.contains(sp.blake2b(sp.pack(params.encryptedData))))) # params.storage
-    SWAP;       # storage.params
-    DUP;        # storage.storage.params
-    DUG 2;      # storage.params.storage
-    CAAR;       # map bytes string.params.storage
-    SWAP;       # params.map bytes string.storage
-    DUP;        # params.params.map bytes string.storage
-    DUG 2;      # params.map bytes string.params.storage
-    CAAR;       # string.map bytes string.params.storage
-    PACK;       # bytes.map bytes string.params.storage
-    BLAKE2B;    # bytes.map bytes string.params.storage
-    MEM;        # bool.params.storage
+        PUSH string "WrongCondition: sp.blake2b(params.proof) == self.data.hashedProof";
+        FAILWITH;
+      };
+    SWAP;
+    DUP;
+    DUG 2;
+    CAAR;
+    SWAP;
+    DUP;
+    DUG 2;
+    CAAR;
+    PACK;
+    BLAKE2B;
+    MEM;
     IF
       {
-        PUSH string "WrongCondition: ~ (self.data.SecretStore.contains(sp.blake2b(sp.pack(params.encryptedData))))"; # string.params.storage
-        FAILWITH;   # FAILED
+        PUSH string "WrongCondition: ~ (self.data.SecretStore.contains(sp.blake2b(sp.pack(params.encryptedData))))";
+        FAILWITH;
       }
-      {}; # params.storage
-    # self.data.SecretStore[sp.blake2b(sp.pack(params.encryptedData))] = params.encryptedData # params.storage
-    SWAP;       # storage.params
-    DUP;        # storage.storage.params
-    DUG 2;      # storage.params.storage
-    DUP;        # storage.storage.params.storage
-    CDR;        # int.storage.params.storage
-    SWAP;       # storage.int.params.storage
-    CAR;        # pair (map %SecretStore bytes string) (bytes %hashedProof).int.params.storage
-    DUP;        # pair (map %SecretStore bytes string) (bytes %hashedProof).pair (map %SecretStore bytes string) (bytes %hashedProof).int.params.storage
-    CDR;        # bytes.pair (map %SecretStore bytes string) (bytes %hashedProof).int.params.storage
-    SWAP;       # pair (map %SecretStore bytes string) (bytes %hashedProof).bytes.int.params.storage
-    CAR;        # map bytes string.bytes.int.params.storage
-    DIG 3;      # params.map bytes string.bytes.int.storage
-    DUP;        # params.params.map bytes string.bytes.int.storage
-    DUG 4;      # params.map bytes string.bytes.int.params.storage
-    CAAR;       # string.map bytes string.bytes.int.params.storage
-    SOME;       # option string.map bytes string.bytes.int.params.storage
-    DIG 4;      # params.option string.map bytes string.bytes.int.storage
-    DUP;        # params.params.option string.map bytes string.bytes.int.storage
-    DUG 5;      # params.option string.map bytes string.bytes.int.params.storage
-    CAAR;       # string.option string.map bytes string.bytes.int.params.storage
-    PACK;       # bytes.option string.map bytes string.bytes.int.params.storage
-    BLAKE2B;    # bytes.option string.map bytes string.bytes.int.params.storage
-    UPDATE;     # map bytes string.bytes.int.params.storage
-    PAIR;       # pair (map bytes string) bytes.int.params.storage
-    PAIR;       # pair (pair (map bytes string) bytes) int.params.storage
-    DUG 2;      # params.storage.pair (pair (map bytes string) bytes) int
-    SWAP;       # storage.params.pair (pair (map bytes string) bytes) int
-    DROP;       # params.pair (pair (map bytes string) bytes) int
-    # self.data.nonce += 1 # params.pair (pair (map bytes string) bytes) int
-    SWAP;       # pair (pair (map bytes string) bytes) int.params
-    DUP;        # pair (pair (map bytes string) bytes) int.pair (pair (map bytes string) bytes) int.params
-    DUG 2;      # pair (pair (map bytes string) bytes) int.params.pair (pair (map bytes string) bytes) int
-    CAR;        # pair (map bytes string) bytes.params.pair (pair (map bytes string) bytes) int
-    PUSH int 1; # int.pair (map bytes string) bytes.params.pair (pair (map bytes string) bytes) int
-    DIG 3;      # pair (pair (map bytes string) bytes) int.int.pair (map bytes string) bytes.params
-    DUP;        # pair (pair (map bytes string) bytes) int.pair (pair (map bytes string) bytes) int.int.pair (map bytes string) bytes.params
-    DUG 4;      # pair (pair (map bytes string) bytes) int.int.pair (map bytes string) bytes.params.pair (pair (map bytes string) bytes) int
-    CDR;        # int.int.pair (map bytes string) bytes.params.pair (pair (map bytes string) bytes) int
-    ADD;        # int.pair (map bytes string) bytes.params.pair (pair (map bytes string) bytes) int
-    SWAP;       # pair (map bytes string) bytes.int.params.pair (pair (map bytes string) bytes) int
-    PAIR;       # pair (pair (map bytes string) bytes) int.params.pair (pair (map bytes string) bytes) int
-    DUG 2;      # params.pair (pair (map bytes string) bytes) int.pair (pair (map bytes string) bytes) int
-    SWAP;       # pair (pair (map bytes string) bytes) int.params.pair (pair (map bytes string) bytes) int
-    DROP;       # params.pair (pair (map bytes string) bytes) int
-    # self.data.hashedProof = params.nexthashedProof # params.pair (pair (map bytes string) bytes) int
-    SWAP;       # pair (pair (map bytes string) bytes) int.params
-    DUP;        # pair (pair (map bytes string) bytes) int.pair (pair (map bytes string) bytes) int.params
-    DUG 2;      # pair (pair (map bytes string) bytes) int.params.pair (pair (map bytes string) bytes) int
-    DUP;        # pair (pair (map bytes string) bytes) int.pair (pair (map bytes string) bytes) int.params.pair (pair (map bytes string) bytes) int
-    CDR;        # int.pair (pair (map bytes string) bytes) int.params.pair (pair (map bytes string) bytes) int
-    SWAP;       # pair (pair (map bytes string) bytes) int.int.params.pair (pair (map bytes string) bytes) int
-    CAAR;       # map bytes string.int.params.pair (pair (map bytes string) bytes) int
-    DIG 2;      # params.map bytes string.int.pair (pair (map bytes string) bytes) int
-    DUP;        # params.params.map bytes string.int.pair (pair (map bytes string) bytes) int
-    DUG 3;      # params.map bytes string.int.params.pair (pair (map bytes string) bytes) int
-    CADR;       # bytes.map bytes string.int.params.pair (pair (map bytes string) bytes) int
-    SWAP;       # map bytes string.bytes.int.params.pair (pair (map bytes string) bytes) int
-    PAIR;       # pair (map bytes string) bytes.int.params.pair (pair (map bytes string) bytes) int
-    PAIR;       # pair (pair (map bytes string) bytes) int.params.pair (pair (map bytes string) bytes) int
-    DUG 2;      # params.pair (pair (map bytes string) bytes) int.pair (pair (map bytes string) bytes) int
-    DROP;       # pair (pair (map bytes string) bytes) int.pair (pair (map bytes string) bytes) int
-    DROP;       # pair (pair (map bytes string) bytes) int
-    NIL operation; # list operation.pair (pair (map bytes string) bytes) int
-    PAIR;       # pair (list operation) (pair (pair (map bytes string) bytes) int)
-  } # pair (list operation) (pair (pair (map bytes string) bytes) int);`;
+      {};
+    SWAP;
+    DUP;
+    DUG 2;
+    DUP;
+    CDR;
+    SWAP;
+    CAR;
+    DUP;
+    CDR;
+    SWAP;
+    CAR;
+    DIG 3;
+    DUP;
+    DUG 4;
+    CAAR;
+    SOME;
+    DIG 4;
+    DUP;
+    DUG 5;
+    CAAR;
+    PACK;
+    BLAKE2B;
+    UPDATE;
+    PAIR;
+    PAIR;
+    DUG 2;
+    SWAP;
+    DROP;
+    SWAP;
+    DUP;
+    DUG 2;
+    CAR;
+    PUSH int 1;
+    DIG 3;
+    DUP;
+    DUG 4;
+    CDR;
+    ADD;
+    SWAP;
+    PAIR;
+    DUG 2;
+    SWAP;
+    DROP;
+    SWAP;
+    DUP;
+    DUG 2;
+    DUP;
+    CDR;
+    SWAP;
+    CAAR;
+    DIG 2;
+    DUP;
+    DUG 3;
+    CADR;
+    SWAP;
+    PAIR;
+    PAIR;
+    DUG 2;
+    DROP;
+    DROP;
+    NIL operation;
+    PAIR;
+  }`;
 
 
   export function SecretStoreStorageMichelson(initialNonce, initialHashedProof) {
 
-    const storage = `(Pair (Pair {} "${initialHashedProof}") ${initialNonce})`;
+    const storage = `(Pair (Pair {} ${initialHashedProof}) ${initialNonce})`;
     return storage;
 }
 

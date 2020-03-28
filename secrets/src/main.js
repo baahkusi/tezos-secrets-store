@@ -14,10 +14,10 @@ const blake = require('blakejs');
 const arrayBufferToHex = require('array-buffer-to-hex');
 // const network = 'babylonnet';
 const network = 'carthagenet';
-const tezosNode = `https://${network}.SmartPy.io`;
+const tezosNode = `https://tezos-dev.cryptonomic-infra.tech/`;
 const conseilServer = {
   url: 'https://conseil-dev.cryptonomic-infra.tech:443',
-  apiKey: 'b9labs', 
+  apiKey: 'galleon', 
   network: network
 };
 
@@ -107,6 +107,9 @@ Vue.prototype.$deployContract = async function (initialNonce, initialHashedProof
 
   const storage = SecretStoreStorageMichelson(initialNonce, initialHashedProof);
 
+  console.log(contract);
+  console.log(storage);
+
   nodeResult = await TezosNodeWriter.sendContractOriginationOperation(tezosNode, keystore, 0, undefined,
                                                                              fee, '', 1000, 100000, contract, 
                                                                              storage, TezosParameterFormat.Michelson);
@@ -125,7 +128,7 @@ Vue.prototype.$deployContract = async function (initialNonce, initialHashedProof
   const groupid = nodeResult['operationGroupID'].replace(reg1, '').replace(reg2, ''); // clean up RPC output
   console.log(`Injected operation group id ${groupid}`);
   const conseilResult = await TezosConseilClient.awaitOperationConfirmation(conseilServer, network, groupid, 5);
-  console.log(`Originated contract at ${conseilResult[0].originated_contracts}`);
+  console.log(`Originated contract at ${conseilResult[0]}`);
 }
 
 Vue.prototype.$invokeContract = function () {
