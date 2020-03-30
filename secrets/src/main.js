@@ -6,13 +6,12 @@ import './plugins/bootstrap-vue';
 import App from './App.vue';
 import sstore from './store';
 import { Random } from 'random-js';
-import { StoreType, TezosNodeWriter, TezosParameterFormat, TezosConseilClient, OperationKindType } from 'conseiljs';
+import { StoreType, TezosNodeWriter, TezosParameterFormat, TezosConseilClient, OperationKindType, ConseilQueryBuilder, ConseilOperator, ConseilDataClient } from 'conseiljs';
 import { SecretStore, SecretStoreStorage, SecretStoreMichelson, SecretStoreStorageMichelson, credentials } from './contract';
 var CryptoJS = require("crypto-js");
 const argon2 = require('argon2-browser');
 const blake = require('blakejs');
 const arrayBufferToHex = require('array-buffer-to-hex');
-// const network = 'babylonnet';
 const network = 'carthagenet';
 const tezosNode = `https://tezos-dev.cryptonomic-infra.tech/`;
 const conseilServer = {
@@ -75,11 +74,10 @@ Vue.prototype.$generateProof = function (private_key, nonce, hash = false) {
   // if we are creating proof (hash == false) we return hex of proof
 
   // the order is important
-  const iv = CryptoJS.enc.Base64.parse(private_key);
+  const iv = CryptoJS.enc.Base64.parse(nonce);
   private_key = CryptoJS.enc.Utf8.parse(private_key);
   const proof = CryptoJS.AES.encrypt(nonce, private_key, { iv: iv }).toString();
 
-  console.log(proof);
   if (hash) {
     return '0x' + blake.blake2bHex(proof, null, 32);
   }
@@ -107,9 +105,6 @@ Vue.prototype.$deployContract = async function (initialNonce, initialHashedProof
 
   const storage = SecretStoreStorageMichelson(initialNonce, initialHashedProof);
 
-  console.log(contract);
-  console.log(storage);
-
   nodeResult = await TezosNodeWriter.sendContractOriginationOperation(tezosNode, keystore, 0, undefined,
                                                                              fee, '', 1000, 100000, contract, 
                                                                              storage, TezosParameterFormat.Michelson);
@@ -126,13 +121,50 @@ Vue.prototype.$deployContract = async function (initialNonce, initialHashedProof
   const reg1 = /"/g;
   const reg2 = /\n/;
   const groupid = nodeResult['operationGroupID'].replace(reg1, '').replace(reg2, ''); // clean up RPC output
-  console.log(`Injected operation group id ${groupid}`);
   const conseilResult = await TezosConseilClient.awaitOperationConfirmation(conseilServer, network, groupid, 5);
-  console.log(`Originated contract at ${conseilResult[0]}`);
+  return conseilResult;
 }
 
-Vue.prototype.$invokeContract = function () {
-  return true;
+Vue.prototype.$invokeContract = async function (KTAddress, params) {
+  const keystore = {
+    publicKey: credentials[network].publicKey,
+    privateKey: credentials[network].privateKey,
+    publicKeyHash: credentials[network].publicKeyHash,
+    seed: '',
+    storeType: StoreType.Fundraiser
+  };
+
+  const args = `(Pair (Pair "${params.encryptedData}" ${params.hashedProof}) ${params.proof})`;
+
+  const nodeResult = await TezosNodeWriter.sendContractInvocationOperation(tezosNode, keystore, KTAddress,
+                                                                           10000, 100000, '', 1000, 100000, 
+                                                                           'addSecret', args, TezosParameterFormat.Michelson);
+
+  const reg1 = /"/g;
+  const reg2 = /\n/;
+  const groupid = nodeResult['operationGroupID'].replace(reg1, '').replace(reg2, ''); // clean up RPC output
+  const conseilResult = await TezosConseilClient.awaitOperationConfirmation(conseilServer, network, groupid, 5);
+  return conseilResult;
+}
+
+
+Vue.prototype.$getCurrentNonce = async function (KTAddress) {
+    const entity = 'accounts';
+    const platform = 'tezos';
+    let accountQuery = ConseilQueryBuilder.blankQuery();
+    accountQuery = ConseilQueryBuilder.addFields(accountQuery, 'storage');
+    accountQuery = ConseilQueryBuilder.addPredicate(accountQuery, 'account_id', ConseilOperator.EQ, [KTAddress], false);
+    accountQuery = ConseilQueryBuilder.setLimit(accountQuery, 1);
+
+    var result = await ConseilDataClient.executeEntityQuery(conseilServer, platform, network, entity, accountQuery);
+
+    result = result[0].storage.split(' ');
+
+    const nonce = Number(result[result.length - 1]);
+
+    console.log(nonce);
+
+    return nonce;
 }
 
 Vue.prototype.$randInt = function () {
