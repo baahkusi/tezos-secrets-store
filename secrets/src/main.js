@@ -16,7 +16,7 @@ const network = 'carthagenet';
 const tezosNode = `https://tezos-dev.cryptonomic-infra.tech/`;
 const conseilServer = {
   url: 'https://conseil-dev.cryptonomic-infra.tech:443',
-  apiKey: 'galleon', 
+  apiKey: 'galleon',
   network: network
 };
 
@@ -82,11 +82,11 @@ Vue.prototype.$generateProof = function (private_key, nonce, hash = false) {
     return '0x' + blake.blake2bHex(proof, null, 32);
   }
 
-  return strToHex(proof);
+  return '0x' + strToHex(proof);
 
 }
 
-Vue.prototype.$deployContract = async function (initialNonce, initialHashedProof, michelson=false) {
+Vue.prototype.$deployContract = async function (initialNonce, initialHashedProof, michelson = false) {
 
   const keystore = {
     publicKey: credentials[network].publicKey,
@@ -101,21 +101,21 @@ Vue.prototype.$deployContract = async function (initialNonce, initialHashedProof
   var nodeResult;
 
   if (michelson) {
-  const contract = SecretStoreMichelson;
+    const contract = SecretStoreMichelson;
 
-  const storage = SecretStoreStorageMichelson(initialNonce, initialHashedProof);
+    const storage = SecretStoreStorageMichelson(initialNonce, initialHashedProof);
 
-  nodeResult = await TezosNodeWriter.sendContractOriginationOperation(tezosNode, keystore, 0, undefined,
-                                                                             fee, '', 1000, 100000, contract, 
-                                                                             storage, TezosParameterFormat.Michelson);
+    nodeResult = await TezosNodeWriter.sendContractOriginationOperation(tezosNode, keystore, 0, undefined,
+      fee, '', 1000, 100000, contract,
+      storage, TezosParameterFormat.Michelson);
   } else {
-  const contract = JSON.stringify(SecretStore);
+    const contract = JSON.stringify(SecretStore);
 
-  const storage = JSON.stringify(SecretStoreStorage(initialNonce, initialHashedProof));
+    const storage = JSON.stringify(SecretStoreStorage(initialNonce, initialHashedProof));
 
-  nodeResult = await TezosNodeWriter.sendContractOriginationOperation(tezosNode, keystore, 0, undefined,
-                                                                             fee, '', 1000, 100000, contract, 
-                                                                             storage, TezosParameterFormat.Micheline);
+    nodeResult = await TezosNodeWriter.sendContractOriginationOperation(tezosNode, keystore, 0, undefined,
+      fee, '', 1000, 100000, contract,
+      storage, TezosParameterFormat.Micheline);
   }
 
   const reg1 = /"/g;
@@ -134,11 +134,17 @@ Vue.prototype.$invokeContract = async function (KTAddress, params) {
     storeType: StoreType.Fundraiser
   };
 
-  const args = `(Pair (Pair "${params.encryptedData}" ${params.hashedProof}) ${params.proof})`;
+  console.log(params);
+
+  // const args = `(Pair (Pair "${params.encryptedData}" ${params.hashedProof}) ${params.proof})`;
+
+  const args = { "prim": "Pair", "args": [{ "prim": "Pair", "args": [{ "string": params.encryptedData }, { "bytes": params.hashedProof.replace('0x', '') }] }, { "bytes": params.proof.replace('0x', '')}] };
+
+  console.log(args);
 
   const nodeResult = await TezosNodeWriter.sendContractInvocationOperation(tezosNode, keystore, KTAddress,
-                                                                           10000, 100000, '', 1000, 100000, 
-                                                                           'addSecret', args, TezosParameterFormat.Michelson);
+    10000, 100000, '', 1000, 100000,
+    undefined, JSON.stringify(args), TezosParameterFormat.Micheline);
 
   const reg1 = /"/g;
   const reg2 = /\n/;
@@ -149,22 +155,20 @@ Vue.prototype.$invokeContract = async function (KTAddress, params) {
 
 
 Vue.prototype.$getCurrentNonce = async function (KTAddress) {
-    const entity = 'accounts';
-    const platform = 'tezos';
-    let accountQuery = ConseilQueryBuilder.blankQuery();
-    accountQuery = ConseilQueryBuilder.addFields(accountQuery, 'storage');
-    accountQuery = ConseilQueryBuilder.addPredicate(accountQuery, 'account_id', ConseilOperator.EQ, [KTAddress], false);
-    accountQuery = ConseilQueryBuilder.setLimit(accountQuery, 1);
+  const entity = 'accounts';
+  const platform = 'tezos';
+  let accountQuery = ConseilQueryBuilder.blankQuery();
+  accountQuery = ConseilQueryBuilder.addFields(accountQuery, 'storage');
+  accountQuery = ConseilQueryBuilder.addPredicate(accountQuery, 'account_id', ConseilOperator.EQ, [KTAddress], false);
+  accountQuery = ConseilQueryBuilder.setLimit(accountQuery, 1);
 
-    var result = await ConseilDataClient.executeEntityQuery(conseilServer, platform, network, entity, accountQuery);
+  var result = await ConseilDataClient.executeEntityQuery(conseilServer, platform, network, entity, accountQuery);
 
-    result = result[0].storage.split(' ');
+  result = result[0].storage.split(' ');
 
-    const nonce = Number(result[result.length - 1]);
+  const nonce = Number(result[result.length - 1]);
 
-    console.log(nonce);
-
-    return nonce;
+  return nonce;
 }
 
 Vue.prototype.$randInt = function () {
