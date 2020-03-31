@@ -18,6 +18,12 @@
         </b-tab>
       </b-tabs>
     </div>
+    <template v-slot:overlay>
+        <div class="text-center">
+          <b-icon icon="stopwatch" font-scale="3" animation="cylon"></b-icon>
+          <p id="cancel-label">{{$store.state.msg}}</p>
+        </div>
+      </template>
     </b-overlay>
   </div>
 </template>

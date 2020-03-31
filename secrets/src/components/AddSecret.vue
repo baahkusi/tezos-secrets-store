@@ -61,11 +61,34 @@ export default {
       };
 
       const results = await this.$invokeContract(KTAddress, params);
+
       console.log(results);
+
+      if (!results) {
+        this.$bvToast.toast(
+          "Failed to add secret due to incorrect credentials provided ...",
+          {
+            title: "Adding Secret  ...",
+            variant: "danger",
+            solid: true
+          }
+        );
+        return;
+      }
+
+      this.$bvToast.toast(
+          "Secret successfully added ...",
+          {
+            title: "Adding Secret  ...",
+            variant: "success",
+            solid: true
+          }
+        );
     },
     async onSubmit(evt) {
       evt.preventDefault();
-      
+      this.$store.state.msg = 'Adding secret to smart contract ...';
+      this.$store.state.show = true;
       if (!this.$store.state.authed) {
         this.$bvToast.toast(
           "You need to provide your auth credentials first.",
@@ -75,13 +98,14 @@ export default {
             solid: true
           }
         );
-
+        this.$store.state.show = false;
         return;
       }
 
       const secret = this.validateForm();
 
       if (!secret){
+        this.$store.state.show = false;
         return;
       }
 
@@ -96,6 +120,8 @@ export default {
         const nextProofHash = this.$generateProof(this.$store.state.private_key, (++currentNonce).toString(), hash);
         // invoke existing contract
         await this.invokeSetSecret(currentProof, nextProofHash, secret, this.$getKTAddress());
+
+        this.$store.state.show = false;
         return;
       }
 
@@ -111,6 +137,8 @@ export default {
       
       const contract = await this.$deployContract(initialNonce, initialHashedProof, true);
 
+      console.log(contract);
+
       if (contract.status != 'applied') {
         this.$bvToast.toast(
           "Failed to contact tezos node, try again.",
@@ -120,11 +148,9 @@ export default {
             solid: true
           }
         );
-
+        this.$store.state.show = false;
         return;
       }
-
-      console.log(contract);
 
       this.$setKTAddress(contract.originated_contracts);
 
@@ -132,9 +158,8 @@ export default {
 
       const nextProofHash = this.$generateProof(this.$store.state.private_key, (++initialNonce).toString(), hash);
 
-      const results = await this.invokeSetSecret(currentProof, nextProofHash, secret, contract.originated_contracts);
-      console.log(results);
-
+      await this.invokeSetSecret(currentProof, nextProofHash, secret, contract.originated_contracts);
+      this.$store.state.show = false;
     }
   }
 };

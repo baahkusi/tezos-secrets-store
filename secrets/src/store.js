@@ -8,6 +8,7 @@ const sstore = {
         private_key:'',
         authed:false,
         show:false,
+        msg:'Please wait ...'
     },
     mutations:{
         set_auth(state, auth){

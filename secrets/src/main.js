@@ -134,17 +134,21 @@ Vue.prototype.$invokeContract = async function (KTAddress, params) {
     storeType: StoreType.Fundraiser
   };
 
-  console.log(params);
+  // console.log(params);
 
-  // const args = `(Pair (Pair "${params.encryptedData}" ${params.hashedProof}) ${params.proof})`;
+  // const args = `(Pair (Pair ${params.encryptedData} ${params.hashedProof}) ${params.proof})`;
 
-  const args = { "prim": "Pair", "args": [{ "prim": "Pair", "args": [{ "string": params.encryptedData }, { "bytes": params.hashedProof.replace('0x', '') }] }, { "bytes": params.proof.replace('0x', '')}] };
+  const args = { "prim": "Pair", "args": [{ "prim": "Pair", "args": [{ "string": params.encryptedData }, { "bytes": params.hashedProof.replace('0x', '') }] }, { "bytes": params.proof.replace('0x', '') }] };
 
-  console.log(args);
-
-  const nodeResult = await TezosNodeWriter.sendContractInvocationOperation(tezosNode, keystore, KTAddress,
-    10000, 100000, '', 1000, 100000,
-    undefined, JSON.stringify(args), TezosParameterFormat.Micheline);
+  // console.log(args);
+  var nodeResult;
+  try {
+    nodeResult = await TezosNodeWriter.sendContractInvocationOperation(tezosNode, keystore, KTAddress,
+      10000, 100000, '', 1000, 100000,
+      undefined, JSON.stringify(args), TezosParameterFormat.Micheline);
+  } catch (error) {
+    return;
+  }
 
   const reg1 = /"/g;
   const reg2 = /\n/;
@@ -154,22 +158,39 @@ Vue.prototype.$invokeContract = async function (KTAddress, params) {
 }
 
 
-Vue.prototype.$getCurrentNonce = async function (KTAddress) {
+async function getStorage(KTAddress) {
   const entity = 'accounts';
   const platform = 'tezos';
-  let accountQuery = ConseilQueryBuilder.blankQuery();
+  var accountQuery = ConseilQueryBuilder.blankQuery();
   accountQuery = ConseilQueryBuilder.addFields(accountQuery, 'storage');
   accountQuery = ConseilQueryBuilder.addPredicate(accountQuery, 'account_id', ConseilOperator.EQ, [KTAddress], false);
   accountQuery = ConseilQueryBuilder.setLimit(accountQuery, 1);
 
-  var result = await ConseilDataClient.executeEntityQuery(conseilServer, platform, network, entity, accountQuery);
+  var result;
+  try {
+    result = await ConseilDataClient.executeEntityQuery(conseilServer, platform, network, entity, accountQuery); 
+  } catch (error) {
+    console.log(error);
+    return;
+  }
 
-  result = result[0].storage.split(' ');
+  console.log(result[0]);
+
+  return result[0];
+}
+
+
+Vue.prototype.$getCurrentNonce = async function (KTAddress) {
+
+  const storage = await getStorage(KTAddress);
+
+  const result = storage.storage.split(' ');
 
   const nonce = Number(result[result.length - 1]);
 
   return nonce;
 }
+
 
 Vue.prototype.$randInt = function () {
   const random = new Random(); // uses the nativeMath engine
