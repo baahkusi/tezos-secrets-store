@@ -41,7 +41,7 @@ export default {
       // alert(JSON.stringify(this.form));
       // Generate private_key username and password
 
-      this.$store.state.msg = 'Generating secret key from credentials ...';
+      this.$store.state.msg = 'Generating secret key from credentials, this could take a minute or three. ...';
       this.$store.state.show = true;
       this.$toKey(this.form.password.trim(), this.form.username.trim())
         .then(h => {

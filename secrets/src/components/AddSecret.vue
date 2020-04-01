@@ -87,7 +87,7 @@ export default {
     },
     async onSubmit(evt) {
       evt.preventDefault();
-      this.$store.state.msg = 'Adding secret to smart contract ...';
+      this.$store.state.msg = 'Adding secret to smart contract, this could take a minute or three.';
       this.$store.state.show = true;
       if (!this.$store.state.authed) {
         this.$bvToast.toast(
@@ -159,6 +159,7 @@ export default {
       const nextProofHash = this.$generateProof(this.$store.state.private_key, (++initialNonce).toString(), hash);
 
       await this.invokeSetSecret(currentProof, nextProofHash, secret, contract.originated_contracts);
+      this.$store.state.kt = contract.originated_contracts;
       this.$store.state.show = false;
     }
   }

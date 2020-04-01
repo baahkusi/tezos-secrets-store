@@ -8,7 +8,8 @@ const sstore = {
         private_key:'',
         authed:false,
         show:false,
-        msg:'Please wait ...'
+        msg:'Please wait ...',
+        kt:''
     },
     mutations:{
         set_auth(state, auth){
@@ -16,6 +17,15 @@ const sstore = {
             state.password = auth.password,
             state.private_key = auth.private_key
             state.authed = true;
+        }
+    },
+    getters:{
+        address(state){
+            if (state.kt) {
+                return state.kt;
+            }
+
+            return localStorage.getItem('KTAddress');
         }
     }
 };

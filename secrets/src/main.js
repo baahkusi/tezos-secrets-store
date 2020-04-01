@@ -11,7 +11,9 @@ import { SecretStore, SecretStoreStorage, SecretStoreMichelson, SecretStoreStora
 var CryptoJS = require("crypto-js");
 const argon2 = require('argon2-browser');
 const blake = require('blakejs');
-const arrayBufferToHex = require('array-buffer-to-hex');
+const convert = (from, to) => str => Buffer.from(str, from).toString(to);
+const utf8ToHex = convert('utf8', 'hex');
+const hexToUtf8 = convert('hex', 'utf8');
 const network = 'carthagenet';
 const tezosNode = `https://tezos-dev.cryptonomic-infra.tech/`;
 const conseilServer = {
@@ -29,19 +31,13 @@ Vue.prototype.$toKey = function (password, username) {
     pass: password,
     salt: username,
     // optional
-    time: Vue.config.devtools ? 100 : 10000, // the number of iterations
+    time: Vue.config.devtools ? 100 : 1000, // the number of iterations
     mem: 1024, // used memory, in KiB
     hashLen: 64, // desired hash length
     parallelism: 1, // desired parallelism (will be computed in parallel only for PNaCl)
     type: argon2.ArgonType.Argon2id, // or argon2.ArgonType.Argon2i
   });
 };
-
-function strToHex(str) {
-  var bytes = Buffer.from(str);
-
-  return arrayBufferToHex(bytes);
-}
 
 
 Vue.prototype.$encryptData = function (dataStr, pKey, hex = false) {
@@ -51,11 +47,13 @@ Vue.prototype.$encryptData = function (dataStr, pKey, hex = false) {
     return cipher;
   }
 
-  return strToHex(cipher);
+  return utf8ToHex(cipher);
 
 };
 
 Vue.prototype.$decryptData = function (dataCipher, pKey) {
+  console.log(dataCipher.toString(CryptoJS.enc.Utf8));
+  
   const dataStr = CryptoJS.AES.decrypt(dataCipher, pKey).toString(CryptoJS.enc.Utf8);
   return JSON.parse(dataStr);
 };
@@ -82,7 +80,7 @@ Vue.prototype.$generateProof = function (private_key, nonce, hash = false) {
     return '0x' + blake.blake2bHex(proof, null, 32);
   }
 
-  return '0x' + strToHex(proof);
+  return '0x' + utf8ToHex(proof);
 
 }
 
@@ -177,6 +175,18 @@ async function getStorage(KTAddress) {
   console.log(result[0]);
 
   return result[0];
+}
+
+Vue.prototype.$getSecrets = async function(KTAddress){
+  const storage = await getStorage(KTAddress);
+  const result = storage.storage.split(' ');
+
+  const start = result.indexOf('{')+1;
+  const end = result.indexOf('}');
+
+  const secrets = result.slice(start, end).join('');
+  console.log(secrets.split(';'));
+  return secrets.split(';').map((secret)=>hexToUtf8(secret.slice(1,-1)));
 }
 
 
